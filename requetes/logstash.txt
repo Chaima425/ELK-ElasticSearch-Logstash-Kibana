@@ -1,0 +1,76 @@
+# TP2 — Mise en place Logstash
+# Aucun secret réel n'est stocké dans ce fichier.
+# Les mots de passe sont fournis par les variables d'environnement.
+
+# 1. Vérifier la configuration Docker Compose
+docker compose config --quiet
+
+# 2. Créer le rôle Logstash à moindres privilèges
+curl -u "elastic:${ELASTIC_PASSWORD}" \
+  -X PUT "http://localhost:9200/_security/role/logstash_writer" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "cluster": [],
+    "indices": [
+      {
+        "names": ["offres"],
+        "privileges": ["create", "create_index", "write", "view_index_metadata"]
+      },
+      {
+        "names": ["logs-web-*"],
+        "privileges": ["create", "create_index", "write", "view_index_metadata"]
+      }
+    ]
+  }'
+
+# 3. Créer l'utilisateur Logstash
+curl -u "elastic:${ELASTIC_PASSWORD}" \
+  -X POST "http://localhost:9200/_security/user/logstash_internal" \
+  -H 'Content-Type: application/json' \
+  -d "{\"password\":\"${LOGSTASH_INTERNAL_PASSWORD}\",\"roles\":[\"logstash_writer\"],\"full_name\":\"Logstash - ingestion\"}"
+
+# 4. Vérifier l'identité de l'utilisateur Logstash
+curl -u "logstash_internal:${LOGSTASH_INTERNAL_PASSWORD}" \
+  "http://localhost:9200/_security/_authenticate?pretty"
+
+# 5. Tester la configuration des pipelines
+docker compose run --rm --no-deps logstash \
+  --path.data /tmp/test \
+  --config.test_and_exit \
+  -f /usr/share/logstash/pipeline/offres.conf
+
+docker compose run --rm --no-deps logstash \
+  --path.data /tmp/test \
+  --config.test_and_exit \
+  -f /usr/share/logstash/pipeline/web.conf
+
+# 6. Démarrer Logstash
+docker compose up -d logstash
+
+# 7. Vérifier les services
+docker compose ps
+
+# 8. Vérifier les pipelines Logstash
+curl -s "http://localhost:9600/_node/pipelines?pretty"
+
+# 9. Vérifier l'API de supervision Logstash
+curl -s "http://localhost:9600/?pretty"
+
+# 10. Vérifier le nombre de documents dans offres
+curl -s -u "elastic:${ELASTIC_PASSWORD}" \
+  "http://localhost:9200/offres/_count?pretty"
+
+# 11. Vérifier un document avec son _id métier
+curl -s -u "elastic:${ELASTIC_PASSWORD}" \
+  "http://localhost:9200/offres/_doc/OFF-00001?pretty"
+
+# 12. Vérifier le nombre de logs web
+curl -s -u "elastic:${ELASTIC_PASSWORD}" \
+  "http://localhost:9200/logs-web-default/_count?pretty"
+
+# 13. Superviser le pipeline offres
+curl -s \
+  "http://localhost:9600/_node/stats/pipelines/offres?pretty"
+
+# 14. Vérifier la configuration Compose
+docker compose config --quiet

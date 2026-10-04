@@ -1,0 +1,152 @@
+# TP2 — Enquête Elasticsearch
+# Aucun secret réel n'est stocké dans ce fichier.
+
+# ============================================================
+# 1. INCIDENT HTTP 503
+# ============================================================
+
+# Compter les réponses 503 et déterminer le début et la fin de l'incident.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "http.response.status_code": 503
+    }
+  },
+  "aggs": {
+    "debut_incident": {
+      "min": {
+        "field": "@timestamp"
+      }
+    },
+    "fin_incident": {
+      "max": {
+        "field": "@timestamp"
+      }
+    }
+  }
+}
+
+# Répartition des méthodes HTTP pendant les 503.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "http.response.status_code": 503
+    }
+  },
+  "aggs": {
+    "methodes": {
+      "terms": {
+        "field": "http.request.method",
+        "size": 10
+      }
+    }
+  }
+}
+
+# Routes les plus touchées par les 503.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "http.response.status_code": 503
+    }
+  },
+  "aggs": {
+    "routes": {
+      "terms": {
+        "field": "url.original",
+        "size": 20
+      }
+    }
+  }
+}
+
+
+# ============================================================
+# 2. ACTIVITE SUSPECTE — IP 203.0.113.66
+# ============================================================
+
+# Compter les requêtes de l'IP suspecte et voir les statuts HTTP.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "client.address": "203.0.113.66"
+    }
+  },
+  "aggs": {
+    "statuts": {
+      "terms": {
+        "field": "http.response.status_code",
+        "size": 10
+      }
+    }
+  }
+}
+
+# Fenêtre temporelle et nombre de requêtes de l'IP suspecte.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "client.address": "203.0.113.66"
+    }
+  },
+  "aggs": {
+    "debut": {
+      "min": {
+        "field": "@timestamp"
+      }
+    },
+    "fin": {
+      "max": {
+        "field": "@timestamp"
+      }
+    }
+  }
+}
+
+# Chemins ciblés par l'IP suspecte.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "client.address": "203.0.113.66"
+    }
+  },
+  "aggs": {
+    "chemins": {
+      "terms": {
+        "field": "url.original",
+        "size": 20
+      }
+    }
+  }
+}
+
+# User-Agent utilisé par l'IP suspecte.
+GET logs-web-default/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "client.address": "203.0.113.66"
+    }
+  },
+  "aggs": {
+    "user_agents": {
+      "terms": {
+        "field": "user_agent.original",
+        "size": 10
+      }
+    }
+  }
+}

@@ -127,3 +127,8 @@ WARP.md
 .aider*
 .specstory/
 .ai/
+
+# --- TP2 Logstash : données et fichiers générés ---
+data/access.log
+data/*_lus.log
+data/dead_letter_queue/
